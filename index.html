@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Ribbon theme for Shower</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=792, user-scalable=no">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<link rel="stylesheet" href="node_modules/shower-ribbon/styles/screen.css">
+</head>
+<body class="list">
+	<!--
+		Debug class on <body> enables
+		cyan grid on slides
+		-->
+	<header class="caption">
+		<h1>Chat in the real world</h1>
+		<p><a href="https://www.linkedin.com/in/mdlavin/en">Matt Lavin</a>, Interactive Intelligence Inc.</p>
+	</header>
+	<section class="slide shout"><div>
+		<h2>After the tutorial</h2>
+		<p class="note" style="position: absolute; top: 65%; width: 100%; left: 0; text-align: center; font-size: 50px">Real problems in a Node.js chat app</p>
+		<footer>
+		  <p>
+                    Building a chat app in node is harder than it
+                    might seem.  This presentation covers some of the issues
+                    we've seen.
+                  </p>
+		</footer>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Background</h2>
+                <ul>
+                  <li>Interactive Intelligence wanted a chat feature</li>
+                  <li>Node.js + redis + mongo + socket.io === scalable chat</li>
+                  <li>Infrastructure is 100% multi-tenant in AWS</li>
+                  <li>Implementation is XMPP to make 3rd party / mobile integration easy</li>
+                </ul>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Problem 1: Clustering in AWS</h2>
+                <ul>
+                  <li>ELBs provide an easy way to put many boxes behind
+                    a DNS name</li>
+                  <li>Socket.io clustering wants sticky sessions + websockets</li>
+                  <li>ELBs don't like sticky sessions + websockets</li>
+                </ul>
+		<table class="next">
+		  <tr>
+		    <th scope="col"></th>
+		    <th>HTTP mode</th>
+		    <th>TCP mode</th>
+		  </tr>
+		  <tr>
+		    <th scope="row">Websockets</th>
+		    <td>&#x1f621;</td>
+		    <td>&#x1f603;</td>
+		  </tr>
+		  <tr>
+		    <th scope="row">Sticky sessions</th>
+		    <td>&#x1f603;</td>
+		    <td>&#x1f621;</td>
+		  </tr>
+		</table>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Solution 1: Add HAProxy</h2>
+		<ul>
+			<li>Add a layer of HAProxy servers</li>
+			<li>Let ELBs handle DNS names</li>
+			<li>Let HAProxy handle sticky sessions</li>
+		</ul>
+                <img src="elb-haproxy.png"/>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Solution 1: HAProxy configuration</h2>
+                <pre>
+                  <code>backend realtimeweb_pool
+mode http
+cookie SERVERID insert preserve maxidle 120
+balance leastconn
+server i-13f85eef 172.18.9.141:8080 check cookie i-13f85eef
+server i-fbf3eb01 172.18.10.60:8080 check cookie i-fbf3eb01</code>
+                </pre>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Solution 1: HAProxy updates</h2>
+                <ul>
+                  <li>Poll EC2 for tagged instances</li>
+                  <li>Use instanceids for cookies for active-active HAProxy</li>
+                </ul>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Problem 2: Monitoring</h2>
+		<ul>
+			<li>New Relic is biased for standard HTTP</li>
+			<li>Want to see what happens inside a socket</li>
+			<li>Want alerting on per message thresholds</li>
+		</ul>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Solution 2: Custom transactions</h2>
+		<ul>
+			<li>Disable monitoring of any socket.io routes</li>
+			<li>Add custom transactions for each message</li>
+			<li>Don't forget about monitoring Redis subscriptions</li>
+		</ul>
+                <p class="note">A demo is more fun than pictures</p>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Problem 3: Unbounded parallelism</h2>
+		<ul>
+			<li>Node makes concurrency too easy</li>
+			<li>You have to share the event loop</li>
+			<li><code>async.each/parallel</code> is not what you want</li>
+		</ul>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Solution 3: Queues and limits</h2>
+		<ul>
+			<li>Put work into shared queues</li>
+			<li>Use less concurrent workers than you think</li>
+			<li><code>async.eachSeries/parallelLimit</code> are your friends</li>
+		</ul>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Solution 3: Event loop</h2>
+                <img src="loop-async-each.png"/>
+	</div></section>
+	<section class="slide"><div>
+		<h2>Unsolved problems</h2>
+		<ul>
+			<li>Effective auto-scaling</li>
+			<li>Gracefully handling instance termination</li>
+			<li>Even balancing by tenant</li>
+		</ul>
+	</div></section>
+	<p class="badge"><a href="https://github.com/shower/shower">Fork me on Github</a></p>
+	<!--
+		To hide progress bar from entire presentation
+		just remove “progress” element.
+		-->
+	<div class="progress"><div></div></div>
+	<script src="node_modules/shower-core/shower.min.js"></script>
+	<!-- Copyright © 2013 Yours Truly, Famous Inc. -->
+</body>
+</html>
